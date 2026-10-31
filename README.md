@@ -10,7 +10,7 @@
 ![Storage](https://img.shields.io/badge/Storage-localStorage-818cf8?style=flat-square)
 ![Dependencies](https://img.shields.io/badge/Dependencies-0-10b981?style=flat-square)
 
-[**🚀 Открыть Live Demo**]()
+[**🚀 Открыть Live Demo**](https://cayplayprojects.github.io/SCRIPTORIUM/)
 
 </div>
 
