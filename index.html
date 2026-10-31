@@ -1,0 +1,508 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SCRIPTORIUM // Minimalist Markdown Atelier</title>
+  <style>
+    :root {
+      --bg: #07080b;
+      --sidebar: #0b0d12;
+      --surface: #10131c;
+      --border: #1b202c;
+      --text: #e2e8f0;
+      --muted: #64748b;
+      --accent: #818cf8;
+      --accent-soft: rgba(129, 140, 248, 0.12);
+      --danger: #f43f5e;
+      --code-bg: #131722;
+    }
+    [data-theme="emerald"] {
+      --bg: #060807; --sidebar: #0b0e0c; --surface: #111613; --border: #1b2620;
+      --text: #e2e8f0; --muted: #64748b; --accent: #10b981; --accent-soft: rgba(16, 185, 129, 0.14); --code-bg: #0f1411;
+    }
+    [data-theme="obsidian"] {
+      --bg: #050505; --sidebar: #0a0a0a; --surface: #121212; --border: #242424;
+      --text: #fafafa; --muted: #737373; --accent: #ffffff; --accent-soft: rgba(255, 255, 255, 0.1); --code-bg: #0e0e0e;
+    }
+    [data-theme="amber"] {
+      --bg: #0a0805; --sidebar: #110d08; --surface: #1a140c; --border: #332613;
+      --text: #ffb000; --muted: #996b00; --accent: #ffcc00; --accent-soft: rgba(255, 204, 0, 0.12); --code-bg: #140f09;
+    }
+    [data-theme="nord"] {
+      --bg: #242933; --sidebar: #2e3440; --surface: #3b4252; --border: #434c5e;
+      --text: #eceff4; --muted: #81a1c1; --accent: #88c0d0; --accent-soft: rgba(136, 192, 208, 0.14); --code-bg: #292e39;
+    }
+    [data-theme="light"] {
+      --bg: #ffffff; --sidebar: #f8fafc; --surface: #f1f5f9; --border: #e2e8f0;
+      --text: #0f172a; --muted: #64748b; --accent: #4f46e5; --accent-soft: rgba(79, 70, 229, 0.1); --code-bg: #f1f5f9;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Inter', 'Segoe UI', sans-serif;
+      height: 100vh; display: flex; overflow: hidden;
+      transition: background 0.2s, color 0.2s;
+    }
+    .sidebar {
+      width: 280px; background: var(--sidebar); border-right: 1px solid var(--border);
+      display: flex; flex-direction: column; flex-shrink: 0; user-select: none;
+    }
+    .brand-bar {
+      padding: 16px 18px; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center;
+    }
+    .brand { display: flex; align-items: center; gap: 10px; font-weight: 700; font-size: 12px; letter-spacing: 0.15em; }
+    .brand-crest {
+      width: 10px; height: 14px; background: var(--accent); border-radius: 2px; display: inline-block;
+    }
+    .brand span.sub { color: var(--muted); font-weight: 400; }
+    .btn-new {
+      background: var(--accent); color: var(--bg); border: none; padding: 6px 12px;
+      border-radius: 7px; font-size: 12px; font-weight: 600; cursor: pointer; transition: 0.15s;
+    }
+    [data-theme="light"] .btn-new, :root:not([data-theme]) .btn-new { color: #fff; }
+    .btn-new:hover { opacity: 0.9; transform: translateY(-1px); }
+    .search-box { padding: 12px 14px; border-bottom: 1px solid var(--border); }
+    .search-input {
+      width: 100%; background: var(--surface); border: 1px solid var(--border);
+      color: var(--text); padding: 8px 11px; border-radius: 7px; font-size: 12.5px; outline: none;
+    }
+    .search-input:focus { border-color: var(--accent); }
+    .notes-list { flex: 1; overflow-y: auto; padding: 10px; display: flex; flex-direction: column; gap: 4px; }
+    .note-card {
+      padding: 10px 12px; border-radius: 8px; cursor: pointer;
+      border: 1px solid transparent; transition: 0.15s; position: relative;
+    }
+    .note-card:hover { background: var(--surface); }
+    .note-card.active { background: var(--accent-soft); border-color: var(--accent); }
+    .note-title { font-size: 13px; font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; padding-right: 20px; }
+    .note-meta { font-size: 11px; color: var(--muted); margin-top: 4px; }
+    .del-btn {
+      position: absolute; right: 10px; top: 10px; background: none; border: none;
+      color: var(--muted); cursor: pointer; font-size: 15px; opacity: 0; transition: 0.15s;
+    }
+    .note-card:hover .del-btn { opacity: 1; }
+    .del-btn:hover { color: var(--danger); }
+
+    .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+    .topbar {
+      padding: 10px 20px; border-bottom: 1px solid var(--border);
+      display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap;
+      background: var(--sidebar);
+    }
+    .format-tools, .view-tools { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; }
+    .tool-btn, .theme-select {
+      background: var(--surface); border: 1px solid var(--border); color: var(--text);
+      padding: 5px 9px; border-radius: 6px; font-size: 12px; font-weight: 500;
+      cursor: pointer; font-family: inherit; transition: 0.15s; outline: none;
+    }
+    .tool-btn:hover, .theme-select:hover { border-color: var(--accent); color: var(--accent); }
+    .tool-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); font-weight: 600; }
+    [data-theme="light"] .tool-btn.active, :root:not([data-theme]) .tool-btn.active { color: #fff; }
+
+    .workspace { flex: 1; display: grid; grid-template-columns: 1fr 1fr; overflow: hidden; }
+    .workspace.mode-edit { grid-template-columns: 1fr; }
+    .workspace.mode-edit .preview { display: none; }
+    .workspace.mode-read { grid-template-columns: 1fr; }
+    .workspace.mode-read textarea { display: none; }
+
+    textarea {
+      width: 100%; height: 100%; background: transparent; border: none; outline: none;
+      color: var(--text); padding: 28px 32px; font-size: 14.5px; line-height: 1.75;
+      resize: none; font-family: 'JetBrains Mono', 'Fira Code', 'Consolas', monospace;
+      border-right: 1px solid var(--border);
+    }
+    .preview {
+      padding: 28px 36px; overflow-y: auto; line-height: 1.75; font-size: 15px;
+    }
+    .preview h1 { font-size: 26px; margin: 0 0 14px; padding-bottom: 10px; border-bottom: 1px solid var(--border); }
+    .preview h2 { font-size: 19px; margin: 22px 0 10px; }
+    .preview h3 { font-size: 16px; margin: 16px 0 8px; color: var(--accent); }
+    .preview p { margin: 10px 0; }
+    .preview ul { margin: 10px 0 10px 22px; }
+    .preview li { margin: 6px 0; }
+    .preview code {
+      background: var(--code-bg); border: 1px solid var(--border);
+      padding: 2px 6px; border-radius: 5px; font-family: 'JetBrains Mono', monospace;
+      font-size: 13px; color: var(--accent);
+    }
+    .preview pre {
+      background: var(--code-bg); border: 1px solid var(--border);
+      padding: 14px 16px; border-radius: 8px; overflow-x: auto; margin: 12px 0;
+    }
+    .preview pre code { border: none; padding: 0; color: var(--text); background: transparent; display: block; line-height: 1.6; }
+    .preview blockquote {
+      border-left: 3px solid var(--accent); background: var(--accent-soft);
+      padding: 10px 14px; border-radius: 0 8px 8px 0; margin: 12px 0; color: var(--text);
+    }
+    .preview hr { border: none; border-top: 1px solid var(--border); margin: 20px 0; }
+    .preview a { color: var(--accent); text-decoration: none; border-bottom: 1px dashed var(--accent); }
+    .check-item {
+      list-style: none; margin-left: -22px; display: flex; align-items: center; gap: 10px;
+      padding: 2px 0;
+    }
+    .check-item input[type="checkbox"] {
+      width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; flex-shrink: 0;
+    }
+    .check-item.done span { text-decoration: line-through; color: var(--muted); }
+
+    .statusbar {
+      padding: 8px 20px; border-top: 1px solid var(--border); background: var(--sidebar);
+      display: flex; justify-content: space-between; font-size: 11.5px; color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <aside class="sidebar">
+    <div class="brand-bar">
+      <div class="brand">
+        <span class="brand-crest"></span>
+        <div>SCRIPTORIUM <span class="sub">// MD</span></div>
+      </div>
+      <button class="btn-new" onclick="createNote()">+ Манускрипт</button>
+    </div>
+    <div class="search-box">
+      <input type="text" class="search-input" id="search" placeholder="Поиск по записям...">
+    </div>
+    <div class="notes-list" id="list"></div>
+  </aside>
+
+  <main class="main">
+    <div class="topbar">
+      <div class="format-tools">
+        <button class="tool-btn" onclick="insertMD('# ', '')" title="Заголовок 1">H1</button>
+        <button class="tool-btn" onclick="insertMD('## ', '')" title="Заголовок 2">H2</button>
+        <button class="tool-btn" onclick="insertMD('**', '**')" title="Жирный (Ctrl+B)"><b>B</b></button>
+        <button class="tool-btn" onclick="insertMD('*', '*')" title="Курсив (Ctrl+I)"><i>I</i></button>
+        <button class="tool-btn" onclick="insertMD('`', '`')" title="Встроенный код">Code</button>
+        <button class="tool-btn" onclick="insertMD('> ', '')" title="Цитата">Quote</button>
+        <button class="tool-btn" onclick="insertMD('- ', '')" title="Список">• Список</button>
+        <button class="tool-btn" onclick="insertMD('- [ ] ', '')" title="Чек-лист">☑ Задача</button>
+      </div>
+      <div class="view-tools">
+        <button class="tool-btn" id="btn-edit" onclick="setMode('edit')">Редактор</button>
+        <button class="tool-btn active" id="btn-split" onclick="setMode('split')">50 / 50</button>
+        <button class="tool-btn" id="btn-read" onclick="setMode('read')">Чтение</button>
+        <button class="tool-btn" onclick="downloadMD()" title="Скачать файл .md">⬇ .MD</button>
+        <button class="tool-btn" onclick="resetGuide()" title="Восстановить шпаргалку">? Гайд</button>
+        <select class="theme-select" id="theme-select" onchange="applyTheme(this.value)" title="Выбор цветовой темы">
+          <option value="scriptorium">Тема: Scriptorium</option>
+          <option value="emerald">Тема: Emerald</option>
+          <option value="obsidian">Тема: Obsidian</option>
+          <option value="amber">Тема: Amber</option>
+          <option value="nord">Тема: Nord</option>
+          <option value="light">Тема: Light</option>
+        </select>
+      </div>
+    </div>
+
+    <div class="workspace" id="workspace">
+      <textarea id="editor" spellcheck="false" placeholder="Начните писать в формате Markdown..."></textarea>
+      <div class="preview" id="preview"></div>
+    </div>
+
+    <div class="statusbar">
+      <span id="stats">0 слов · 0 символов</span>
+      <span id="theme-status">SCRIPTORIUM // Atelier · Автосохранение</span>
+    </div>
+  </main>
+
+  <script>
+    const GUIDE_CONTENT = `# SCRIPTORIUM // Мастерская Markdown
+
+Добро пожаловать в **SCRIPTORIUM** — изолированную среду для работы с текстом, проектной документацией и заметками. Все записи хранятся локально в вашем браузере.
+
+---
+
+## 1. Заголовки и структура
+Используйте символ решетки \`#\` в начале строки:
+- \`# Заголовок 1\` — главный заголовок манускрипта
+- \`## Заголовок 2\` — основной раздел
+- \`### Заголовок 3\` — подраздел или акцент
+
+## 2. Типографика
+- **Жирный текст** оборачивается двойными звездочками: \`**текст**\`
+- *Курсивный текст* оборачивается одинарными: \`*текст*\`
+- ~~Зачеркнутый текст~~ пишется через двойную тильду: \`~~текст~~\`
+- Встроенный \`код\` выделяется одиночными обратными кавычками
+
+## 3. Списки и Чек-листы
+Маркированный список:
+- Нулевые внешние зависимости
+- Мгновенный отклик интерфейса
+
+Интерактивные задачи (кликайте прямо в превью):
+- [x] Инициализировать ядро SCRIPTORIUM
+- [ ] Настроить любимую тему оформления (Emerald, Obsidian, Amber)
+- [ ] Экспортировать готовый документ в \`.md\`
+
+## 4. Цитаты и Блоки кода
+> «Чистый код и минималистичный дизайн — основа надежных цифровых продуктов.»
+
+Многострочный блок кода оформляется тройными кавычками:
+\`\`\`javascript
+const scriptorium = {
+  atelier: "Markdown Core",
+  storage: "localStorage",
+  status: "Active"
+};
+\`\`\`
+
+---
+
+### Горячие клавиши
+- Выделите текст и нажмите \`Ctrl+B\` или \`Ctrl+I\` для форматирования.
+- Клавиша \`Tab\` добавляет отступ в списках и коде.`;
+
+    let notes = JSON.parse(localStorage.getItem('scriptorium_docs_v1') || '[]');
+    if (!notes.length) {
+      notes = [{ id: Date.now(), updated: Date.now(), content: GUIDE_CONTENT }];
+      localStorage.setItem('scriptorium_docs_v1', JSON.stringify(notes));
+    }
+
+    let activeId = notes[0].id;
+    const editor = document.getElementById('editor');
+    const preview = document.getElementById('preview');
+    const list = document.getElementById('list');
+    const stats = document.getElementById('stats');
+    const search = document.getElementById('search');
+    const workspace = document.getElementById('workspace');
+    const themeSelect = document.getElementById('theme-select');
+    const themeStatus = document.getElementById('theme-status');
+
+    function applyTheme(name) {
+      if (name === 'scriptorium') document.documentElement.removeAttribute('data-theme');
+      else document.documentElement.setAttribute('data-theme', name);
+      localStorage.setItem('scriptorium_theme', name);
+      themeSelect.value = name;
+      themeStatus.textContent = `Тема: ${name} · Локальное автосохранение`;
+    }
+
+    const savedTheme = localStorage.getItem('scriptorium_theme') || 'scriptorium';
+    applyTheme(savedTheme);
+
+    function escapeHTML(str) {
+      return str.replace(/[&<>]/g, t => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;' }[t]));
+    }
+
+    function formatInline(str) {
+      return str
+        .replace(/`([^`\n]+)`/g, '<code>$1</code>')
+        .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+        .replace(/~~([^~]+)~~/g, '<del>$1</del>')
+        .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+    }
+
+    function parseMD(md) {
+      const codeBlocks = [];
+      let text = md.replace(/```([\s\S]*?)```/g, (_, code) => {
+        const idx = codeBlocks.length;
+        codeBlocks.push(`<pre><code>${escapeHTML(code.trim())}</code></pre>`);
+        return `@@CODEBLOCK_${idx}@@`;
+      });
+
+      const lines = text.split('\n');
+      let out = [];
+      let inList = false;
+      let checkIndex = 0;
+
+      for (let rawLine of lines) {
+        const trimmed = rawLine.trim();
+
+        if (/^@@CODEBLOCK_\d+@@$/.test(trimmed)) {
+          if (inList) { out.push('</ul>'); inList = false; }
+          const idx = parseInt(trimmed.match(/\d+/)[0], 10);
+          out.push(codeBlocks[idx]);
+          continue;
+        }
+
+        const line = escapeHTML(rawLine);
+
+        if (/^---+$/.test(line.trim())) {
+          if (inList) { out.push('</ul>'); inList = false; }
+          out.push('<hr>');
+          continue;
+        }
+        if (/^### (.*)/.test(line)) {
+          if (inList) { out.push('</ul>'); inList = false; }
+          out.push(`<h3>${formatInline(line.replace(/^### /, ''))}</h3>`);
+          continue;
+        }
+        if (/^## (.*)/.test(line)) {
+          if (inList) { out.push('</ul>'); inList = false; }
+          out.push(`<h2>${formatInline(line.replace(/^## /, ''))}</h2>`);
+          continue;
+        }
+        if (/^# (.*)/.test(line)) {
+          if (inList) { out.push('</ul>'); inList = false; }
+          out.push(`<h1>${formatInline(line.replace(/^# /, ''))}</h1>`);
+          continue;
+        }
+        if (/^&gt; (.*)/.test(line)) {
+          if (inList) { out.push('</ul>'); inList = false; }
+          out.push(`<blockquote>${formatInline(line.replace(/^&gt; /, ''))}</blockquote>`);
+          continue;
+        }
+        if (/^- \[( |x)\] (.*)/i.test(line)) {
+          if (!inList) { out.push('<ul>'); inList = true; }
+          const match = line.match(/^- \[( |x)\] (.*)/i);
+          const isChecked = match[1].toLowerCase() === 'x';
+          const itemText = formatInline(match[2]);
+          const currentIdx = checkIndex++;
+          out.push(`<li class="check-item ${isChecked ? 'done' : ''}"><input type="checkbox" ${isChecked ? 'checked' : ''} onchange="toggleCheck(${currentIdx})"><span>${itemText}</span></li>`);
+          continue;
+        }
+        if (/^- (.*)/.test(line)) {
+          if (!inList) { out.push('<ul>'); inList = true; }
+          out.push(`<li>${formatInline(line.replace(/^- /, ''))}</li>`);
+          continue;
+        }
+
+        if (inList) { out.push('</ul>'); inList = false; }
+        if (line.trim() !== '') {
+          out.push(`<p>${formatInline(line)}</p>`);
+        }
+      }
+      if (inList) out.push('</ul>');
+
+      return out.join('\n');
+    }
+
+    window.toggleCheck = (targetIdx) => {
+      let current = 0;
+      const lines = editor.value.split('\n');
+      for (let i = 0; i < lines.length; i++) {
+        if (/^- \[( |x)\] /i.test(lines[i])) {
+          if (current === targetIdx) {
+            lines[i] = lines[i].replace(/^- \[( |x)\] /i, (_, ch) => `- [${ch.toLowerCase() === 'x' ? ' ' : 'x'}] `);
+            break;
+          }
+          current++;
+        }
+      }
+      editor.value = lines.join('\n');
+      editor.dispatchEvent(new Event('input'));
+    };
+
+    function save() {
+      localStorage.setItem('scriptorium_docs_v1', JSON.stringify(notes));
+    }
+
+    function renderList() {
+      const q = search.value.toLowerCase().trim();
+      list.innerHTML = '';
+      notes
+        .filter(n => !q || n.content.toLowerCase().includes(q))
+        .forEach(n => {
+          const rawTitle = (n.content.split('\n').find(l => l.trim().length > 0) || 'Без названия').replace(/^#+\s*/, '');
+          const date = new Date(n.updated || n.id).toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' });
+          const div = document.createElement('div');
+          div.className = 'note-card' + (n.id === activeId ? ' active' : '');
+          div.innerHTML = `
+            <div class="note-title">${escapeHTML(rawTitle)}</div>
+            <div class="note-meta">Изменено в ${date}</div>
+            <button class="del-btn" onclick="deleteNote(event, ${n.id})" title="Удалить">×</button>
+          `;
+          div.onclick = () => selectNote(n.id);
+          list.appendChild(div);
+        });
+    }
+
+    function selectNote(id) {
+      activeId = id;
+      const note = notes.find(n => n.id === id);
+      editor.value = note ? note.content : '';
+      updateView();
+      renderList();
+    }
+
+    function createNote() {
+      const n = { id: Date.now(), updated: Date.now(), content: '# Новый манускрипт\n\nНачните ввод текста...' };
+      notes.unshift(n);
+      save();
+      selectNote(n.id);
+      editor.focus();
+    }
+
+    function resetGuide() {
+      const n = { id: Date.now(), updated: Date.now(), content: GUIDE_CONTENT };
+      notes.unshift(n);
+      save();
+      selectNote(n.id);
+    }
+
+    function deleteNote(e, id) {
+      e.stopPropagation();
+      if (notes.length <= 1) return;
+      notes = notes.filter(n => n.id !== id);
+      if (activeId === id) activeId = notes[0].id;
+      save();
+      selectNote(activeId);
+    }
+
+    function updateView() {
+      const val = editor.value;
+      preview.innerHTML = parseMD(val);
+      const words = val.trim() ? val.trim().split(/\s+/).length : 0;
+      const lines = val.split('\n').length;
+      stats.textContent = `${words} слов · ${val.length} симв. · ${lines} строк`;
+    }
+
+    function insertMD(prefix, suffix) {
+      const start = editor.selectionStart;
+      const end = editor.selectionEnd;
+      const selected = editor.value.substring(start, end) || 'текст';
+      const replacement = prefix + selected + suffix;
+      editor.setRangeText(replacement, start, end, 'select');
+      editor.focus();
+      editor.dispatchEvent(new Event('input'));
+    }
+
+    function setMode(mode) {
+      workspace.className = 'workspace' + (mode === 'split' ? '' : ` mode-${mode}`);
+      ['edit', 'split', 'read'].forEach(m => {
+        document.getElementById(`btn-${m}`).classList.toggle('active', m === mode);
+      });
+    }
+
+    function downloadMD() {
+      const note = notes.find(n => n.id === activeId);
+      if (!note) return;
+      const blob = new Blob([note.content], { type: 'text/markdown;charset=utf-8' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = 'scriptorium-note.md';
+      a.click();
+    }
+
+    editor.addEventListener('input', () => {
+      const note = notes.find(n => n.id === activeId);
+      if (note) {
+        note.content = editor.value;
+        note.updated = Date.now();
+        save();
+        updateView();
+        renderList();
+      }
+    });
+
+    editor.addEventListener('keydown', e => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        insertMD('  ', '');
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'b') {
+        e.preventDefault();
+        insertMD('**', '**');
+      } else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'i') {
+        e.preventDefault();
+        insertMD('*', '*');
+      }
+    });
+
+    search.addEventListener('input', renderList);
+    selectNote(activeId);
+  </script>
+</body>
+</html>
